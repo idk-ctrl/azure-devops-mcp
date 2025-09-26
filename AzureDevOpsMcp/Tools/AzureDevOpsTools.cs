@@ -5,27 +5,30 @@ using Microsoft.VisualStudio.Services.WebApi;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.TeamFoundation.SourceControl.WebApi;
 using AzureDevOpsMcp.Models;
+using ModelContextProtocol.Server;
+using System.ComponentModel;
 
-namespace AzureDevOpsMcp.Services;
+namespace AzureDevOpsMcp.Tools;
 
-public class AzureDevOpsService
+[McpServerToolType]
+public static class AzureDevOpsTools
 {
-    private readonly string _organizationUrl;
-    private readonly string _personalAccessToken;
-    private readonly VssConnection _connection;
-
-    public AzureDevOpsService(string organizationUrl, string personalAccessToken)
+    private static VssConnection GetConnection()
     {
-        _organizationUrl = organizationUrl;
-        _personalAccessToken = personalAccessToken;
+        var orgUrl = Environment.GetEnvironmentVariable("AZURE_DEVOPS_ORG_URL") 
+            ?? throw new InvalidOperationException("AZURE_DEVOPS_ORG_URL environment variable is required");
+        var pat = Environment.GetEnvironmentVariable("AZURE_DEVOPS_PAT") 
+            ?? throw new InvalidOperationException("AZURE_DEVOPS_PAT environment variable is required");
         
-        var credentials = new VssBasicCredential(string.Empty, _personalAccessToken);
-        _connection = new VssConnection(new Uri(_organizationUrl), credentials);
+        var credentials = new VssBasicCredential(string.Empty, pat);
+        return new VssConnection(new Uri(orgUrl), credentials);
     }
 
-    public async Task<List<Models.Project>> GetProjectsAsync()
+    [McpServerTool, Description("Get all projects in the Azure DevOps organization")]
+    public static async Task<List<Models.Project>> GetProjects()
     {
-        var projectClient = _connection.GetClient<ProjectHttpClient>();
+        using var connection = GetConnection();
+        var projectClient = connection.GetClient<ProjectHttpClient>();
         var projects = await projectClient.GetProjects();
         
         return projects.Select(p => new Models.Project
@@ -38,13 +41,17 @@ public class AzureDevOpsService
         }).ToList();
     }
 
-    public async Task<List<Models.WorkItem>> GetWorkItemsAsync(string projectName, int top = 100)
+    [McpServerTool, Description("Get work items from a specific project")]
+    public static async Task<List<Models.WorkItem>> GetWorkItems(
+        [Description("The name of the project")] string project,
+        [Description("Maximum number of work items to return")] int top = 100)
     {
-        var workItemClient = _connection.GetClient<WorkItemTrackingHttpClient>();
+        using var connection = GetConnection();
+        var workItemClient = connection.GetClient<WorkItemTrackingHttpClient>();
         
         var wiql = new Wiql()
         {
-            Query = $"SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo], [System.CreatedDate], [System.ChangedDate] FROM WorkItems WHERE [System.TeamProject] = '{projectName}' ORDER BY [System.ChangedDate] DESC"
+            Query = $"SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo], [System.CreatedDate], [System.ChangedDate] FROM WorkItems WHERE [System.TeamProject] = '{project}' ORDER BY [System.ChangedDate] DESC"
         };
 
         var result = await workItemClient.QueryByWiqlAsync(wiql, top: top);
@@ -68,10 +75,13 @@ public class AzureDevOpsService
         }).ToList();
     }
 
-    public async Task<List<Models.Repository>> GetRepositoriesAsync(string projectName)
+    [McpServerTool, Description("Get repositories from a specific project")]
+    public static async Task<List<Models.Repository>> GetRepositories(
+        [Description("The name of the project")] string project)
     {
-        var gitClient = _connection.GetClient<GitHttpClient>();
-        var repositories = await gitClient.GetRepositoriesAsync(projectName);
+        using var connection = GetConnection();
+        var gitClient = connection.GetClient<GitHttpClient>();
+        var repositories = await gitClient.GetRepositoriesAsync(project);
 
         return repositories.Select(repo => new Models.Repository
         {
@@ -82,10 +92,15 @@ public class AzureDevOpsService
         }).ToList();
     }
 
-    public async Task<List<Models.PullRequest>> GetPullRequestsAsync(string projectName, string repositoryId, int top = 100)
+    [McpServerTool, Description("Get pull requests from a specific repository")]
+    public static async Task<List<Models.PullRequest>> GetPullRequests(
+        [Description("The name of the project")] string project,
+        [Description("The ID of the repository")] string repositoryId,
+        [Description("Maximum number of pull requests to return")] int top = 100)
     {
-        var gitClient = _connection.GetClient<GitHttpClient>();
-        var pullRequests = await gitClient.GetPullRequestsAsync(projectName, repositoryId, 
+        using var connection = GetConnection();
+        var gitClient = connection.GetClient<GitHttpClient>();
+        var pullRequests = await gitClient.GetPullRequestsAsync(project, repositoryId, 
             new GitPullRequestSearchCriteria { Status = PullRequestStatus.All }, top: top);
 
         return pullRequests.Select(pr => new Models.PullRequest
