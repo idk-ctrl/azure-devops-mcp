@@ -174,69 +174,76 @@ http POST localhost:5001/mcp/tools \
 
 ### Using with Cursor
 
-1. **Install the MCP extension** (if available) or configure manually
-2. **Add MCP server configuration** to your Cursor settings:
-   ```json
-   {
-     "mcp": {
-       "servers": {
-         "azure-devops": {
-           "command": "node",
-           "args": ["-e", "require('http').createServer((req, res) => { const url = 'http://localhost:5001'; require('http').request(url + req.url, { method: req.method, headers: req.headers }, (response) => { response.pipe(res); }).end(); }).listen(3001);"],
-           "env": {
-             "AZURE_DEVOPS_ORG_URL": "https://dev.azure.com/yourorg",
-             "AZURE_DEVOPS_PAT": "your-pat-token-here"
-           }
-         }
-       }
-     }
-   }
+1. **Start the MCP server locally**
+   ```bash
+   cd azure-devops-mcp/AzureDevOpsMcp
+   export AZURE_DEVOPS_ORG_URL="https://dev.azure.com/yourorg"
+   export AZURE_DEVOPS_PAT="your-pat-token-here"
+   dotnet run
    ```
 
-3. **Alternative: Direct HTTP configuration**
+2. **Configure MCP in Cursor settings** (`~/.cursor/mcp_settings.json`):
    ```json
    {
-     "mcp": {
-       "servers": {
-         "azure-devops": {
-           "url": "http://localhost:5001",
+     "mcpServers": {
+       "azure-devops": {
+         "transport": {
            "type": "http",
-           "endpoints": {
-             "tools": "/mcp/tools",
-             "info": "/mcp/info"
-           }
+           "url": "http://localhost:5001"
+         },
+         "capabilities": {
+           "tools": {}
          }
        }
      }
    }
    ```
 
-### Using with Claude Desktop/Code
-
-1. **Configure MCP in Claude settings** (`~/.claude/config.json` or similar):
+3. **Alternative: Using WithHttpTransport in configuration**
    ```json
    {
      "mcpServers": {
        "azure-devops": {
-         "command": "dotnet",
-         "args": ["run", "--project", "/path/to/azure-devops-mcp/AzureDevOpsMcp"],
-         "env": {
-           "AZURE_DEVOPS_ORG_URL": "https://dev.azure.com/yourorg",
-           "AZURE_DEVOPS_PAT": "your-pat-token-here"
+         "transport": "http://localhost:5001",
+         "name": "Azure DevOps MCP",
+         "description": "Azure DevOps integration via MCP"
+       }
+     }
+   }
+   ```
+
+### Using with Claude Desktop
+
+1. **Start the MCP server locally**
+   ```bash
+   cd azure-devops-mcp/AzureDevOpsMcp
+   export AZURE_DEVOPS_ORG_URL="https://dev.azure.com/yourorg"
+   export AZURE_DEVOPS_PAT="your-pat-token-here"
+   dotnet run
+   ```
+
+2. **Configure MCP in Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS or `%APPDATA%\Claude\claude_desktop_config.json` on Windows):
+   ```json
+   {
+     "mcpServers": {
+       "azure-devops": {
+         "transport": {
+           "type": "http",
+           "url": "http://localhost:5001"
          }
        }
      }
    }
    ```
 
-2. **Alternative: HTTP endpoint configuration**
+3. **Alternative: WithHttpTransport configuration**
    ```json
    {
      "mcpServers": {
        "azure-devops": {
-         "url": "http://localhost:5001",
-         "type": "http-mcp",
-         "capabilities": ["tools"]
+         "transport": "http://localhost:5001",
+         "name": "Azure DevOps MCP Server",
+         "version": "1.0.0"
        }
      }
    }
@@ -245,18 +252,25 @@ http POST localhost:5001/mcp/tools \
 ### Using with VS Code (MCP Extension)
 
 1. **Install MCP extension** from VS Code marketplace
-2. **Configure in VS Code settings** (`settings.json`):
+2. **Start the MCP server locally**
+   ```bash
+   cd azure-devops-mcp/AzureDevOpsMcp
+   export AZURE_DEVOPS_ORG_URL="https://dev.azure.com/yourorg"
+   export AZURE_DEVOPS_PAT="your-pat-token-here"
+   dotnet run
+   ```
+
+3. **Configure in VS Code settings** (`settings.json`):
    ```json
    {
      "mcp.servers": {
        "azure-devops": {
-         "command": "dotnet",
-         "args": ["run", "--project", "./AzureDevOpsMcp"],
-         "cwd": "/path/to/azure-devops-mcp",
-         "env": {
-           "AZURE_DEVOPS_ORG_URL": "https://dev.azure.com/yourorg",
-           "AZURE_DEVOPS_PAT": "your-pat-token-here"
-         }
+         "transport": {
+           "type": "http",
+           "url": "http://localhost:5001"
+         },
+         "name": "Azure DevOps MCP",
+         "capabilities": ["tools"]
        }
      }
    }
