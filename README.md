@@ -170,6 +170,133 @@ http POST localhost:5001/mcp/tools \
   params:='{"project": "YourProjectName", "top": 50}'
 ```
 
+## Configuration for AI Code Editors
+
+### Using with Cursor
+
+1. **Install the MCP extension** (if available) or configure manually
+2. **Add MCP server configuration** to your Cursor settings:
+   ```json
+   {
+     "mcp": {
+       "servers": {
+         "azure-devops": {
+           "command": "node",
+           "args": ["-e", "require('http').createServer((req, res) => { const url = 'http://localhost:5001'; require('http').request(url + req.url, { method: req.method, headers: req.headers }, (response) => { response.pipe(res); }).end(); }).listen(3001);"],
+           "env": {
+             "AZURE_DEVOPS_ORG_URL": "https://dev.azure.com/yourorg",
+             "AZURE_DEVOPS_PAT": "your-pat-token-here"
+           }
+         }
+       }
+     }
+   }
+   ```
+
+3. **Alternative: Direct HTTP configuration**
+   ```json
+   {
+     "mcp": {
+       "servers": {
+         "azure-devops": {
+           "url": "http://localhost:5001",
+           "type": "http",
+           "endpoints": {
+             "tools": "/mcp/tools",
+             "info": "/mcp/info"
+           }
+         }
+       }
+     }
+   }
+   ```
+
+### Using with Claude Desktop/Code
+
+1. **Configure MCP in Claude settings** (`~/.claude/config.json` or similar):
+   ```json
+   {
+     "mcpServers": {
+       "azure-devops": {
+         "command": "dotnet",
+         "args": ["run", "--project", "/path/to/azure-devops-mcp/AzureDevOpsMcp"],
+         "env": {
+           "AZURE_DEVOPS_ORG_URL": "https://dev.azure.com/yourorg",
+           "AZURE_DEVOPS_PAT": "your-pat-token-here"
+         }
+       }
+     }
+   }
+   ```
+
+2. **Alternative: HTTP endpoint configuration**
+   ```json
+   {
+     "mcpServers": {
+       "azure-devops": {
+         "url": "http://localhost:5001",
+         "type": "http-mcp",
+         "capabilities": ["tools"]
+       }
+     }
+   }
+   ```
+
+### Using with VS Code (MCP Extension)
+
+1. **Install MCP extension** from VS Code marketplace
+2. **Configure in VS Code settings** (`settings.json`):
+   ```json
+   {
+     "mcp.servers": {
+       "azure-devops": {
+         "command": "dotnet",
+         "args": ["run", "--project", "./AzureDevOpsMcp"],
+         "cwd": "/path/to/azure-devops-mcp",
+         "env": {
+           "AZURE_DEVOPS_ORG_URL": "https://dev.azure.com/yourorg",
+           "AZURE_DEVOPS_PAT": "your-pat-token-here"
+         }
+       }
+     }
+   }
+   ```
+
+### Available MCP Tools
+
+Once configured, you can use these tools in your AI code editor:
+
+- **`get_projects`**: List all Azure DevOps projects
+  ```
+  @azure-devops get_projects
+  ```
+
+- **`get_work_items`**: Get work items from a project
+  ```
+  @azure-devops get_work_items project="MyProject" top=50
+  ```
+
+- **`get_repositories`**: List repositories in a project
+  ```
+  @azure-devops get_repositories project="MyProject"
+  ```
+
+- **`get_pull_requests`**: Get pull requests from a repository
+  ```
+  @azure-devops get_pull_requests project="MyProject" repositoryId="repo-guid" top=25
+  ```
+
+### Usage Examples in AI Editors
+
+**Example prompts you can use:**
+
+- "Show me all work items in the 'WebApp' project that are assigned to me"
+- "List all repositories in my Azure DevOps organization"
+- "Get the latest pull requests for the 'frontend' repository"
+- "What are the open bugs in the 'API' project?"
+
+**Note**: Make sure the MCP server is running locally (`dotnet run`) before using it in your AI code editor.
+
 ## Deployment to Azure Web App
 
 ### Option 1: Using GitHub Actions
